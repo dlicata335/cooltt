@@ -24,7 +24,7 @@ module CmpM : sig
   val lift_ev : D.env -> 'a evaluate -> 'a m
   val test_sequent : D.cof list -> D.cof -> bool m
   val simplify_cof : D.cof -> D.cof m
-  val forall_cof : D.dim * D.cof -> D.cof m
+  val forall_cof : D.dim * D.cof -> D.cof m (* may need for ddim? *)
 
   val restore_cof_thy : CofThy.Disj.t -> 'a m -> 'a m
 

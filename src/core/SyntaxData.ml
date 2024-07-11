@@ -14,9 +14,14 @@ struct
     | Suc of t
     | NatElim of t * t * t * t
 
+    (* Circle -> DirCircle *)
     | Base
     | Loop of t
     | CircleElim of t * t * t * t
+
+    | DirBase
+    | DirLoop of t
+    | DirCircleElim of t * t * t * t
 
     | Lam of Ident.t * t
     | Ap of t * t
@@ -66,7 +71,8 @@ struct
     | CodeNat
     | CodeUniv
     | CodeV of t * t * t * t
-    | CodeCircle
+    | CodeCircle (* Circle -> DirCircle *)
+    | CodeDirCircle
 
     | ESub of sub * t
     (** Explicit substition *)
@@ -86,7 +92,8 @@ struct
     | Sg of tp * Ident.t * tp
     | Signature of sign
     | Nat
-    | Circle
+    | Circle (* Circle -> DirCircle *)
+    | DirCircle
     | TpESub of sub * tp
     | DomTp
 

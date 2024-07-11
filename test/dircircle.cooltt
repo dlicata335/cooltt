@@ -1,0 +1,15 @@
+
+
+-- def dirΩ1s1 : type :=
+--  hom dircircle dirbase dirbase -- add cases for dirbase and add test case for dircircle elim
+ 
+-- def loop1 : dirΩ1s1 := x => dirloop x
+
+-- def dirΩ1s1 : type :=
+--  hom dircircle dirbase dirbase 
+
+def hom (A : type) (a b : A) : type :=
+  (i : 𝟚) → fsub A with [i = d0 ⇒ a | i = d1 ⇒ b]
+
+def dirΩ1s1 : type :=
+  hom dircircle dirbase dirbase 

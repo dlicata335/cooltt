@@ -34,8 +34,11 @@ let keywords =
     ("base", BASE);
     ("loop", LOOP);
     ("➰", LOOP);
-    ("circle", CIRCLE);
+    ("circle", CIRCLE); (* Circle -> DirCircle *)
     ("🍪", CIRCLE);
+    ("dirloop", DIRLOOP);
+    ("dirbase", DIRBASE);
+    ("dircircle", DIRCIRCLE);
     ("sig", SIG);
     ("✏", SIG);
     ("struct", STRUCT);

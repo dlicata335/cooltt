@@ -103,21 +103,33 @@ and subst_con : D.dim -> DimProbe.t -> D.con -> D.con CM.m =
   fun r x con ->
   CM.ret @@ D.LetSym (r, x, con)
 
+(*
+and dir_subst_con : D.ddim -> DimProbe.t -> D.con -> D.con CM.m =
+  fun r x con ->
+  CM.ret @@ D.DirLetSym (r, x, con) *)
+
+(* So do I make a new function here with DDim? *)
 and push_subst_con : D.dim -> DimProbe.t -> D.con -> D.con CM.m =
   fun r x ->
   let open CM in
   let module K = Kado.Syntax in
   function
-  | D.Dim0 | D.Dim1 | D.Prf | D.DDim0 | D.DDim1 | D.Zero | D.Base | D.StableCode (`Nat | `Circle | `Univ)
+  | D.Dim0 | D.Dim1 | D.Prf | D.DDim0 | D.DDim1 | D.Zero | D.Base | D.DirBase | D.StableCode (`Nat | `Circle | `DirCircle | `Univ)
   | D.DomCode (`Dim | `DDim | `Cof) as con -> ret con
   | D.LetSym (s, y, con) ->
     push_subst_con r x @<< push_subst_con s y con
+  (*
+  | D.DirLetSym (s, y, con) ->
+    push_subst_con r x @<< dir_push_subst_con s y con *)
   | D.Suc con ->
     let+ con = subst_con r x con in
     D.Suc con
-  | D.Loop s ->
+  | D.Loop s -> (* Circle -> DirCircle ? *)
     let+ s = subst_dim r x s in
     D.Loop s
+  | D.DirLoop s -> (* Circle -> DirCircle ? should I change this to subst?? *)
+    let+ s = ret s in
+    D.DirLoop s
   | D.Lam (ident, clo) ->
     let+ clo = subst_clo r x clo in
     D.Lam (ident, clo)
@@ -214,10 +226,148 @@ and push_subst_con : D.dim -> DimProbe.t -> D.con -> D.con CM.m =
     let+ branches = MU.map go_branch branches in
     D.Split branches
 
+(*
+and dir_push_subst_con : D.ddim -> DimProbe.t -> D.con -> D.con CM.m =
+  fun r x ->
+  let open CM in
+  let module K = Kado.Syntax in
+  function
+  | D.Dim0 | D.Dim1 | D.Prf | D.DDim0 | D.DDim1 | D.Zero | D.Base | D.StableCode (`Nat | `Circle | `Univ)
+  | D.DomCode (`Dim | `DDim | `Cof) as con -> ret con
+  | D.LetSym (s, y, con) ->
+    dir_push_subst_con r x @<< push_subst_con s y con
+  | D.DirLetSym (s, y, con) ->
+    dir_push_subst_con r x @<< dir_push_subst_con s y con
+  | D.Suc con ->
+    let+ con = dir_subst_con r x con in
+    D.Suc con
+  | D.Loop s -> (* Circle -> DirCircle ? *)
+    let+ s = subst_ddim_dim r x s in
+    D.Loop s
+  | D.DirLoop s -> (* Circle -> DirCircle ? should I change this to subst?? *)
+    let+ s = subst_ddim r x s in
+    D.DirLoop s
+  | D.Lam (ident, clo) ->
+    let+ clo = subst_clo r x clo in
+    D.Lam (ident, clo)
+  | BindSym (y, con) ->
+    begin
+      test_sequent [] (CofBuilder.eq (Dim.DimProbe x) (Dim.DimProbe y)) |>>
+      function
+      | true ->
+        ret @@ D.BindSym (y, con)
+      | false ->
+        let+ con = subst_con r x con in
+        D.BindSym (y, con)
+    end
+  | D.Pair (con0, con1) ->
+    let+ con0 = subst_con r x con0
+    and+ con1 = subst_con r x con1 in
+    D.Pair (con0, con1)
+  | D.Struct fields ->
+    let+ fields = MU.map (MU.second (subst_con r x)) fields in
+    D.Struct fields
+  | D.StableCode code ->
+    let+ code = subst_stable_code r x code in
+    D.StableCode code
+  | D.ElIn con ->
+    let+ con = subst_con r x con in
+    D.ElIn con
+  | D.SubIn con ->
+    let+ con = subst_con r x con in
+    D.SubIn con
+  | D.Cof (K.Join phis) ->
+    let+ phis = MU.map (subst_con r x) phis in
+    D.Cof (K.Join phis)
+  | D.Cof (K.Meet phis) ->
+    let+ phis = MU.map (subst_con r x) phis in
+    D.Cof (K.Meet phis)
+  | D.Cof (K.Le (s, s')) ->
+    let+ s = subst_con r x s
+    and+ s' = subst_con r x s' in
+    D.Cof (K.Le (s, s'))
+  | D.Cof (K.DLe (s, s')) ->
+    let+ s = subst_con r x s
+    and+ s' = subst_con r x s' in
+    D.Cof (K.DLe (s, s'))
+  | D.FHCom (tag, s, s', phi, bdy) ->
+    let+ s = subst_dim r x s
+    and+ s' = subst_dim r x s'
+    and+ phi = subst_cof r x phi
+    and+ bdy = subst_con r x bdy in
+    D.FHCom (tag, s, s', phi, bdy)
+  | D.Box (s, s', phi, sides, cap) ->
+    let+ s = subst_dim r x s
+    and+ s' = subst_dim r x s'
+    and+ phi = subst_cof r x phi
+    and+ sides = subst_con r x sides
+    and+ cap = subst_con r x cap in
+    D.Box (s, s', phi, sides, cap)
+  | D.UnstableCode (`V (s, pcode, code, pequiv)) ->
+    let+ s = subst_dim r x s
+    and+ pcode = subst_con r x pcode
+    and+ code = subst_con r x code
+    and+ pequiv = subst_con r x pequiv in
+    D.UnstableCode (`V (s, pcode, code, pequiv))
+  | D.UnstableCode (`HCom (s, s', phi, bdy)) ->
+    let+ s = subst_dim r x s
+    and+ s' = subst_dim r x s'
+    and+ phi = subst_cof r x phi
+    and+ bdy = subst_con r x bdy in
+    D.UnstableCode (`HCom (s, s', phi, bdy))
+  | D.VIn (s, equiv, pivot, base) ->
+    let+ s = subst_dim r x s
+    and+ equiv = subst_con r x equiv
+    and+ pivot = subst_con r x pivot
+    and+ base = subst_con r x base in
+    D.VIn (s, equiv, pivot, base)
+  | D.DimProbe y as con ->
+    begin
+      test_sequent [] (CofBuilder.eq (Dim.DimProbe x) (Dim.DimProbe y)) |>>
+      function
+      | true ->
+        ret @@ D.dim_to_con r
+      | false ->
+        ret con
+    end
+  | D.Cut {tp; cut} ->
+    let+ tp = subst_tp r x tp
+    and+ cut = subst_cut r x cut in
+    D.Cut {tp; cut}
+  | D.Split branches ->
+    let go_branch (phi, clo) =
+      let+ phi = subst_cof r x phi
+      and+ clo = subst_clo r x clo in
+      (phi, clo)
+    in
+    let+ branches = MU.map go_branch branches in
+    D.Split branches
+*)
+
 and subst_dim : D.dim -> DimProbe.t -> D.dim -> D.dim CM.m =
   fun r x s ->
   let open CM in
   con_to_dim @<< push_subst_con r x @@ D.dim_to_con s
+
+  (*
+and subst_ddim_dim : D.ddim -> DimProbe.t -> D.dim -> D.dim CM.m =
+  fun r x s ->
+  let open CM in
+  con_to_dim @<< dim_push_subst_con r x @@ D.dim_to_con s
+
+and subst_dim_ddim : D.dim -> DimProbe.t -> D.ddim -> D.ddim CM.m =
+  fun r x s ->
+  let open CM in
+  con_to_ddim @<< push_subst_con r x @@ D.ddim_to_con s *)
+
+
+(* Do I need to make this??? -- note I made the first itme D.dim not D.ddim *)
+
+(*
+and subst_ddim : D.ddim -> DimProbe.t -> D.ddim -> D.ddim CM.m =
+  fun r x s ->
+  let open CM in
+  con_to_ddim @<< dir_push_subst_con r x @@ D.ddim_to_con s  *)
 
 and subst_cof : D.dim -> DimProbe.t -> D.cof -> D.cof CM.m =
   fun r x phi ->
@@ -229,6 +379,12 @@ and subst_clo : D.dim -> DimProbe.t -> D.tm_clo -> D.tm_clo CM.m =
   let open CM in
   let+ env = subst_env r x env in
   D.Clo (tm, env)
+(*
+and dir_subst_clo : D.ddim -> DimProbe.t -> D.tm_clo -> D.tm_clo CM.m =
+  fun r x (Clo (tm, env)) ->
+  let open CM in
+  let+ env = dir_subst_env r x env in
+  D.Clo (tm, env) *)
 
 and subst_tp_clo : D.dim -> DimProbe.t -> D.tp_clo -> D.tp_clo CM.m =
   fun r x (Clo (tp, env)) ->
@@ -248,6 +404,13 @@ and subst_env : D.dim -> DimProbe.t -> D.env -> D.env CM.m =
   let+ tpenv = MU.map_bwd (subst_tp r x) tpenv
   and+ conenv = MU.map_bwd (subst_con r x) conenv in
   D.{tpenv; conenv}
+(*
+and dir_subst_env : D.ddim -> DimProbe.t -> D.env -> D.env CM.m =
+  fun r x {tpenv; conenv} ->
+  let open CM in
+  let+ tpenv = MU.map_bwd (subst_tp r x) tpenv
+  and+ conenv = MU.map_bwd (subst_con r x) conenv in
+  D.{tpenv; conenv} *)
 
 and subst_sign : D.dim -> DimProbe.t -> D.sign -> D.sign CM.m =
   fun r x ->
@@ -283,7 +446,7 @@ and subst_tp : D.dim -> DimProbe.t -> D.tp -> D.tp CM.m =
     let+ phi = subst_cof r x phi
     and+ tp = subst_tp r x tp in
     D.Partial (phi, tp)
-  | D.Univ | D.Nat | D.Circle | D.TpDim | D.TpDDim | D.TpCof | D.DomTp as con -> ret con
+  | D.Univ | D.Nat | D.Circle | D.DirCircle | D.TpDim | D.TpDDim | D.TpCof | D.DomTp as con -> ret con
   | D.TpPrf phi ->
     let+ phi = subst_cof r x phi in
     D.TpPrf phi
@@ -314,6 +477,63 @@ and subst_tp : D.dim -> DimProbe.t -> D.tp -> D.tp CM.m =
     let+ branches = MU.map subst_branch branches in
     D.TpSplit branches
 
+(*
+and dir_subst_tp : D.ddim -> DimProbe.t -> D.tp -> D.tp CM.m =
+  fun r x ->
+  let open CM in
+  function
+  | D.Pi (base, ident, fam) ->
+    let+ base = dir_subst_tp r x base
+    and+ fam = dir_subst_tp_clo r x fam in
+    D.Pi (base, ident, fam)
+  | D.Sg (base, ident, fam) ->
+    let+ base = dir_subst_tp r x base
+    and+ fam = dir_subst_tp_clo r x fam in
+    D.Sg (base, ident, fam)
+  | D.Signature sign ->
+    let+ sign = dir_subst_sign r x sign in
+    D.Signature sign
+  | D.Sub (base, phi, clo) ->
+    let+ base = dir_subst_tp r x base
+    and+ phi = dir_subst_cof r x phi
+    and+ clo = dir_subst_clo r x clo in
+    D.Sub (base, phi, clo)
+  | D.Partial (phi, tp) ->
+    let+ phi = dir_subst_cof r x phi
+    and+ tp = dir_subst_tp r x tp in
+    D.Partial (phi, tp)
+  | D.Univ | D.Nat | D.Circle | D.DirCircle | D.TpDim | D.TpDDim | D.TpCof | D.DomTp as con -> ret con
+  | D.TpPrf phi ->
+    let+ phi = dir_subst_cof r x phi in
+    D.TpPrf phi
+  | D.ElStable code ->
+    let+ code = dir_subst_stable_code r x code in
+    D.ElStable code
+  | D.ElCut cut ->
+    let+ cut = subst_cut r x cut in
+    D.ElCut cut
+  | D.ElUnstable (`HCom (s, s', phi, bdy)) ->
+    let+ s = dir_subst_dim r x s
+    and+ s' = dir_subst_dim r x s'
+    and+ phi = dir_subst_cof r x phi
+    and+ bdy = dir_subst_con r x bdy in
+    D.ElUnstable (`HCom (s, s', phi, bdy))
+  | D.ElUnstable (`V (s, pcode, code, pequiv)) ->
+    let+ s = subst_dim r x s
+    and+ pcode = dir_subst_con r x pcode
+    and+ code = dir_subst_con r x code
+    and+ pequiv = dir_subst_con r x pequiv in
+    D.ElUnstable (`V (s, pcode, code, pequiv))
+  | D.TpSplit branches ->
+    let subst_branch (phi, clo) =
+      let+ phi = dir_subst_cof r x phi
+      and+ clo = dir_subst_tp_clo r x clo in
+      phi, clo
+    in
+    let+ branches = MU.map subst_branch branches in
+    D.TpSplit branches
+*)
+
 and subst_stable_code : D.dim -> DimProbe.t -> D.con D.stable_code -> D.con D.stable_code CM.m =
   fun r x ->
   let open CM in
@@ -340,7 +560,7 @@ and subst_stable_code : D.dim -> DimProbe.t -> D.con D.stable_code -> D.con D.st
   | `Partial (`Fib cof, code) ->
     let+ code = subst_con r x code in
     `Partial (`Fib cof, code)
-  | `Nat | `Circle | `Univ as code ->
+  | `Nat | `Circle | `DirCircle | `Univ as code ->
     ret code
 
 and subst_cut : D.dim -> DimProbe.t -> D.cut -> D.cut CM.m =
@@ -407,11 +627,17 @@ and subst_frm : D.dim -> DimProbe.t -> D.frm -> D.frm CM.m =
     and+ con1 = subst_con r x con1
     and+ con2 = subst_con r x con2 in
     D.KNatElim (con0, con1, con2)
+    (* Circle -> DirCircle *)
   | D.KCircleElim (con0, con1, con2) ->
     let+ con0 = subst_con r x con0
     and+ con1 = subst_con r x con1
     and+ con2 = subst_con r x con2 in
     D.KCircleElim (con0, con1, con2)
+  | D.KDirCircleElim (con0, con1, con2) ->
+    let+ con0 = subst_con r x con0
+    and+ con1 = subst_con r x con1
+    and+ con2 = subst_con r x con2 in
+    D.KDirCircleElim (con0, con1, con2)
 
 
 and subst_sp : D.dim -> DimProbe.t -> D.frm list -> D.frm list CM.m =
@@ -431,7 +657,8 @@ and eval_tp : S.tp -> D.tp EvM.m =
   let open EvM in
   function
   | S.Nat -> ret D.Nat
-  | S.Circle -> ret D.Circle
+  | S.Circle -> ret D.Circle (* Circle -> DirCircle *)
+  | S.DirCircle -> ret D.DirCircle
   | S.Pi (base, ident, fam) ->
     let+ env = read_local
     and+ vbase = eval_tp base in
@@ -522,12 +749,29 @@ and eval : S.t -> D.con EvM.m =
         | false ->
           ret (D.Loop r)
       end
-    | S.CircleElim (mot, base, loop, c) ->
+    | S.CircleElim (mot, base, loop, c) -> (* Circle -> DirCircle *)
       let* vmot = eval mot in
       let* vbase = eval base in
       let* vc = eval c in
       let* vloop = eval loop in
       lift_cmp @@ do_circle_elim vmot vbase vloop vc
+    | S.DirBase ->
+      ret D.DirBase
+    | S.DirLoop tr ->
+      let* r = eval_ddim tr in
+      begin
+        CM.test_sequent [] (CofBuilder.dboundary r) |> lift_cmp |>> function
+        | true ->
+          ret D.DirBase
+        | false ->
+          ret (D.DirLoop r) (* How do I make this a ddim? *)
+      end
+    | S.DirCircleElim (mot, dirbase, dirloop, c) -> (* Circle -> DirCircle *)
+      let* vmot = eval mot in
+      let* vdirbase = eval dirbase in
+      let* vc = eval c in
+      let* vdirloop = eval dirloop in
+      lift_cmp @@ do_circle_elim vmot vdirbase vdirloop vc
     | S.Lam (ident, t) ->
       let+ env = read_local in
       D.Lam (ident, D.Clo (t, env))
@@ -673,8 +917,12 @@ and eval : S.t -> D.con EvM.m =
     | S.CodeNat ->
       ret @@ D.StableCode `Nat
 
+      (* Circle -> DirCircle *)
     | S.CodeCircle ->
       ret @@ D.StableCode `Circle
+    
+    | S.CodeDirCircle ->
+      ret @@ D.StableCode `DirCircle
 
     | S.CodeUniv ->
       ret @@ D.StableCode `Univ
@@ -762,6 +1010,11 @@ and eval_dim tr =
   let* con = eval tr in
   lift_cmp @@ con_to_dim con
 
+and eval_ddim tr =
+  let open EvM in
+  let* con = eval tr in
+  lift_cmp @@ con_to_ddim con
+
 and eval_cof tphi =
   let open EvM in
   let* vphi =
@@ -772,11 +1025,14 @@ and eval_cof tphi =
 and whnf_con : D.con -> D.con whnf CM.m =
   let open CM in
   function
-  | D.Lam _ | D.BindSym _ | D.Zero | D.Suc _ | D.Base | D.Pair _ | D.Struct _ | D.SubIn _ | D.ElIn _
+  | D.Lam _ | D.BindSym _ | D.Zero | D.Suc _ | D.Base | D.DirBase | D.Pair _ | D.Struct _ | D.SubIn _ | D.ElIn _
   | D.Cof _ | D.Dim0 | D.Dim1 |  D.DDim0 | D.DDim1 | D.Prf | D.StableCode _ | D.DomCode _ | D.DimProbe _ ->
     ret `Done
   | D.LetSym (r, x, con) ->
     reduce_to @<< push_subst_con r x con
+  (*
+  | D.DirLetSym (r, x, con) ->
+    reduce_to @<< push_subst_con r x con  *)
   | D.Cut {cut; _} ->
     whnf_cut cut
   | D.FHCom (_, r, r', phi, bdy) ->
@@ -794,6 +1050,13 @@ and whnf_con : D.con -> D.con whnf CM.m =
       | true -> ret (`Reduce D.Base)
       | false -> ret `Done
     end
+    | D.DirLoop r ->
+      begin
+        test_sequent [] (CofBuilder.dboundary r) |>>
+        function
+        | true -> ret (`Reduce D.DirBase)
+        | false -> ret `Done
+      end
   | D.Split branches -> whnf_con_branches branches
 
 and whnf_con_branches =
@@ -993,6 +1256,7 @@ and do_nat_elim (mot : D.con) zero (suc : D.con) : D.con -> D.con CM.m =
     abort_if_inconsistent (ret D.tm_abort) @@
     go con
 
+    (* Circle -> DirCircle *)
 and do_circle_elim (mot : D.con) base (loop : D.con) c : D.con CM.m =
   let open CM in
   abort_if_inconsistent (ret D.tm_abort) @@
@@ -1043,6 +1307,58 @@ and do_circle_elim (mot : D.con) base (loop : D.con) c : D.con CM.m =
   | c ->
     Format.eprintf "bad circle-elim: %a@." D.pp_con c;
     CM.throw @@ NbeFailed "Not an element of the circle"
+
+
+and do_dircircle_elim (mot : D.con) dirbase (dirloop : D.con) c : D.con CM.m =
+  let open CM in
+  abort_if_inconsistent (ret D.tm_abort) @@
+  whnf_inspect_con c |>>
+  function
+  | D.DirBase ->
+    ret dirbase
+  | D.DirLoop r ->
+    do_ap dirloop (D.ddim_to_con r)
+  | D.Cut {cut; _} as c ->
+    let* fib = do_ap mot c in
+    let+ elfib = do_el fib in
+    cut_frm ~tp:elfib ~cut @@
+    D.KDirCircleElim (mot, dirbase, dirloop)
+  | D.FHCom (`DirCircle, r, s, phi, bdy) ->
+    splice_tm @@
+    Splice.con mot @@ fun mot ->
+    Splice.dim r @@ fun r ->
+    Splice.dim s @@ fun s ->
+    Splice.cof phi @@ fun phi ->
+    Splice.con bdy @@ fun bdy ->
+    Splice.con dirbase @@ fun dirbase ->
+    Splice.con dirloop @@ fun dirloop ->
+    Splice.term @@
+    let fam =
+      TB.lam @@ fun i ->
+      let fhcom =
+        TB.el_out @@
+        TB.hcom TB.code_dircircle r i phi @@
+        TB.lam @@ fun j ->
+        TB.lam @@ fun prf ->
+        TB.el_in @@ TB.ap bdy [j; prf]
+      in
+      TB.ap mot [fhcom]
+    in
+    let bdy' =
+      TB.lam @@ fun i ->
+      TB.lam @@ fun prf ->
+      TB.dircircle_elim mot dirbase dirloop @@ TB.ap bdy [i; prf]
+    in
+    TB.com fam r s phi bdy'
+  | D.Split branches as con ->
+    splice_tm @@
+    Splice.con mot @@ fun mot ->
+    Splice.con dirbase @@ fun dirbase ->
+    Splice.con dirloop @@ fun dirloop ->
+    Splice.Macro.commute_split con (List.map fst branches) @@ TB.dircircle_elim mot dirbase dirloop
+  | c ->
+    Format.eprintf "bad dircircle-elim: %a@." D.pp_con c;
+    CM.throw @@ NbeFailed "Not an element of the dircircle"
 
 and inst_tp_clo : D.tp_clo -> D.con -> D.tp CM.m =
   fun clo x ->
@@ -1373,8 +1689,11 @@ and unfold_el : D.con D.stable_code -> D.tp CM.m =
       | `Nat ->
         ret D.Nat
 
-      | `Circle ->
+      | `Circle -> (* Circle -> DirCircle *)
         ret D.Circle
+
+      | `DirCircle -> (* Circle -> DirCircle *)
+        ret D.DirCircle
 
       | `Univ ->
         ret D.Univ
@@ -1493,7 +1812,7 @@ and enact_rigid_coe line r r' con tag =
   | `Stable (x, code) ->
     begin
       match code with
-      | `Nat | `Circle | `Univ -> ret con
+      | `Nat | `Circle | `DirCircle | `Univ -> ret con
       | `Pi (basex, famx) ->
         splice_tm @@
         Splice.con (D.BindSym (x, basex)) @@ fun base_line ->
@@ -1653,7 +1972,8 @@ and enact_rigid_hcom code r r' phi bdy tag =
         Splice.con bdy @@ fun bdy ->
         Splice.term @@
         TB.Kan.hcom_ext ~n ~n' ~cof ~psi ~fam ~bdry ~r ~r' ~phi ~bdy
-      | `Circle | `Nat as tag ->
+        (* Circle -> DirCircle *)
+      | `Circle | `Nat | `DirCircle as tag ->
         let+ bdy' =
           splice_tm @@
           Splice.con bdy @@ fun bdy ->
@@ -1770,7 +2090,9 @@ and do_frm con =
   | D.KSnd -> do_snd con
   | D.KProj lbl -> do_proj con lbl
   | D.KNatElim (mot, case_zero, case_suc) -> do_nat_elim mot case_zero case_suc con
+  (* Circle -> DirCircle *)
   | D.KCircleElim (mot, case_base, case_loop) -> do_circle_elim mot case_base case_loop con
+  | D.KDirCircleElim (mot, case_dirbase, case_dirloop) -> do_dircircle_elim mot case_dirbase case_dirloop con
   | D.KElOut -> do_el_out con
 
 and do_spine con =

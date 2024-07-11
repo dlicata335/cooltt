@@ -27,7 +27,9 @@ let pp_connective fmt =
   | `Nat ->
     Format.fprintf fmt "nat"
   | `Circle ->
-    Format.fprintf fmt "circle"
+    Format.fprintf fmt "circle" (* Circle -> DirCircle *)
+  | `DirCircle ->
+    Format.fprintf fmt "dircircle" 
   | `Sub ->
     Format.fprintf fmt "sub"
   | `Prf ->

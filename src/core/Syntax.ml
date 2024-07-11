@@ -35,7 +35,11 @@ struct
 
     | Base -> Format.fprintf fmt "base"
     | Loop _ -> Format.fprintf fmt "<loop>"
-    | CircleElim _ -> Format.fprintf fmt "<circle/elim>"
+    | CircleElim _ -> Format.fprintf fmt "<circle/elim>" (* Circle -> DirCircle *)
+
+    | DirBase -> Format.fprintf fmt "dirbase"
+    | DirLoop _ -> Format.fprintf fmt "<dirloop>"
+    | DirCircleElim _ -> Format.fprintf fmt "<dircircle/elim>"
 
     | Lam (ident, tm) -> Format.fprintf fmt "lam[%a, %a]" Ident.pp ident dump tm
     | Ap (tm0, tm1) -> Format.fprintf fmt "ap[%a, %a]" dump tm0 dump tm1
@@ -89,6 +93,7 @@ struct
     | CodeUniv -> Format.fprintf fmt "univ"
     | CodeV _ -> Format.fprintf fmt "<v>"
     | CodeCircle -> Format.fprintf fmt "circle"
+    | CodeDirCircle -> Format.fprintf fmt "dircircle"
 
     | ESub _ -> Format.fprintf fmt "<esub>"
 
@@ -115,7 +120,8 @@ struct
     | Sg _ -> Format.fprintf fmt "<sg>"
     | Signature fields -> Format.fprintf fmt "tp/sig[%a]" dump_sign fields
     | Nat -> Format.fprintf fmt "nat"
-    | Circle -> Format.fprintf fmt "circle"
+    | Circle -> Format.fprintf fmt "circle" (* Circle -> DirCircle *)
+    | DirCircle -> Format.fprintf fmt "dircircle"
     | TpESub _ -> Format.fprintf fmt "<esub>"
     | DomTp -> Format.fprintf fmt "<dom>"
 
@@ -166,12 +172,13 @@ struct
       | Cof (Cof.Meet _) -> cof_meet
       | ForallCof _ -> dual juxtaposition arrow
 
-      | Zero | Base | CodeNat | CodeCircle | CodeUniv | Dim0 | Dim1 | DDim0 | DDim1 | Prf | CodeDim | CodeDDim | CodeCof -> atom
+      | Zero | Base | DirBase | CodeNat | CodeCircle | CodeDirCircle | CodeUniv | Dim0 | Dim1 | DDim0 | DDim1 | Prf | CodeDim | CodeDDim | CodeCof -> atom
       | Suc _ as tm -> if Option.is_some (to_numeral tm) then atom else juxtaposition
       | HCom _ | Com _ | Coe _
       | Fst _ | Snd _
-      | NatElim _ | Loop _
-      | CircleElim _ -> juxtaposition
+      | NatElim _ | Loop _ | DirLoop _
+      | CircleElim _ -> juxtaposition (* Circle -> DirCircle *)
+      | DirCircleElim _ -> juxtaposition
 
       | SubIn _ | SubOut _ | ElIn _ | ElOut _ -> passed
       | CodePi _ -> arrow
@@ -199,7 +206,7 @@ struct
 
     let classify_tp : tp -> t =
       function
-      | Univ | TpDim | TpDDim | TpCof | Nat | Circle | DomTp -> atom
+      | Univ | TpDim | TpDDim | TpCof | Nat | Circle | DirCircle | DomTp -> atom
       | El _ -> passed
       | TpVar _ -> atom
       | TpPrf _ -> delimited
@@ -345,12 +352,22 @@ struct
       Format.fprintf fmt "base"
     | Loop tm ->
       Format.fprintf fmt "loop %a" (pp_atomic env) tm
-    | CircleElim (mot, base, loop, tm) ->
+    | CircleElim (mot, base, loop, tm) -> (* Circle -> DirCircle *)
       Format.fprintf fmt "@[<hv2>elim %a %@ %a@;@[<hv2>[ base =>@;%a@ | loop =>@;%a@ ]@]@]"
         (pp_atomic env) tm
         (pp_atomic env) mot
         (pp env P.isolated) base
         (pp env P.isolated) loop
+    | DirBase ->
+      Format.fprintf fmt "dirbase"
+    | DirLoop tm ->
+      Format.fprintf fmt "dirloop %a" (pp_atomic env) tm
+    | DirCircleElim (mot, dirbase, dirloop, tm) -> (* Circle -> DirCircle *)
+      Format.fprintf fmt "@[<hv2>elim %a %@ %a@;@[<hv2>[ dirbase =>@;%a@ | dirloop =>@;%a@ ]@]@]"
+        (pp_atomic env) tm
+        (pp_atomic env) mot
+        (pp env P.isolated) dirbase
+        (pp env P.isolated) dirloop
     | SubIn tm when Debug.is_debug_mode () ->
       Format.fprintf fmt "sub/in %a" (pp_atomic env) tm
     | SubOut tm when Debug.is_debug_mode () ->
@@ -406,12 +423,16 @@ struct
       Format.fprintf fmt "`nat"
     | CodeCircle when Debug.is_debug_mode () ->
       Format.fprintf fmt "`circle"
+    | CodeDirCircle when Debug.is_debug_mode () ->
+      Format.fprintf fmt "`dircircle"
     | CodeUniv when Debug.is_debug_mode () ->
       Format.fprintf fmt "`type"
     | CodeNat ->
       Format.fprintf fmt "nat"
-    | CodeCircle ->
+    | CodeCircle -> (* Circle -> DirCircle *)
       Format.fprintf fmt "circle"
+    | CodeDirCircle -> 
+      Format.fprintf fmt "dircircle"
     | CodeUniv ->
       Format.fprintf fmt "type"
 
@@ -662,7 +683,9 @@ struct
       Format.fprintf fmt "type"
     | Nat ->
       Format.fprintf fmt "nat"
-    | Circle ->
+    | Circle -> (* Circle -> DirCircle *)
+      Format.fprintf fmt "circle"
+    | DirCircle -> (* Circle -> DirCircle *)
       Format.fprintf fmt "circle"
     | El tm when Debug.is_debug_mode () ->
       Format.fprintf fmt "el %a" (pp_atomic env) tm

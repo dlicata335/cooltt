@@ -121,6 +121,7 @@ struct
     | KProj lbl -> Format.fprintf fmt "proj[%a]" Ident.pp_user lbl
     | KNatElim _ -> Format.fprintf fmt "<nat-elim>"
     | KCircleElim _ -> Format.fprintf fmt "<circle-elim>"
+    | KDirCircleElim _ -> Format.fprintf fmt "<dircircle-elim>"
     | KElOut -> Uuseg_string.pp_utf_8 fmt "⭝ₑₗ"
 
   and pp_cof : cof Pp.printer =
@@ -165,13 +166,17 @@ struct
     | Cut {cut;tp} ->
       Format.fprintf fmt "cut[%a :: %a]" pp_cut cut pp_tp tp
     | Zero ->
-      Format.fprintf fmt "zero"
+      Format.fprintf fmt "zero" (* Circle -> DirCircle *)
     | Suc con ->
       Format.fprintf fmt "suc[%a]" pp_con con
-    | Base ->
+    | Base -> 
       Format.fprintf fmt "base"
     | Loop r ->
       Format.fprintf fmt "loop[%a]" pp_dim r
+    | DirBase -> 
+      Format.fprintf fmt "dirbase"
+    | DirLoop r ->
+      Format.fprintf fmt "dirloop[%a]" pp_ddim r
     | Pair (con0, con1) ->
       Format.fprintf fmt "pair[%a,%a]" pp_con con0 pp_con con1
     | Struct fields ->
@@ -203,14 +208,22 @@ struct
       Format.fprintf fmt "el/in[%a]" pp_con con
     | StableCode `Nat ->
       Format.fprintf fmt "nat/code"
-    | StableCode `Circle ->
+    | StableCode `Circle -> (* Circle -> DirCircle *)
       Format.fprintf fmt "circle/code"
+    | StableCode `DirCircle -> (* Circle -> DirCircle *)
+      Format.fprintf fmt "dircircle/code"
     | SubIn _ ->
       Format.fprintf fmt "<sub/in>"
     | FHCom _ ->
       Format.fprintf fmt "<fhcom>"
+    (* Will be something else
+    | FHDirCom _ ->
+      Format.fprintf fmt "<fhdircom>" *)
     | LetSym _ ->
       Format.fprintf fmt "<let-sym>"
+    (*
+    | DirLetSym _ ->
+      Format.fprintf fmt "<dir-let-sym>"  *)
     | StableCode `Univ -> Format.fprintf fmt "<code-univ>"
     | BindSym _ -> Format.fprintf fmt "<bind-sym>"
     | StableCode code -> pp_stable_code fmt code
@@ -256,8 +269,10 @@ struct
       Format.fprintf fmt "<dom>"
     | Nat ->
       Format.fprintf fmt "<nat>"
-    | Circle ->
+    | Circle -> (* Circle -> DirCircle *)
       Format.fprintf fmt "<circle>"
+    | DirCircle -> 
+      Format.fprintf fmt "<dircircle>"
     | ElStable code ->
       Format.fprintf fmt "el[%a]" pp_stable_code code
     | ElCut con ->
@@ -276,7 +291,8 @@ struct
     | `Sg _ -> Format.fprintf fmt "<code-sg>"
     | `Signature _ -> Format.fprintf fmt "<code-sig>"
     | `Nat -> Format.fprintf fmt "<code-nat>"
-    | `Circle -> Format.fprintf fmt "<code-circle>"
+    | `Circle -> Format.fprintf fmt "<code-circle>" (* Circle -> DirCircle *)
+    | `DirCircle -> Format.fprintf fmt "<code-dircircle>"
     | `Univ -> Format.fprintf fmt "<code-univ>"
     | `FSub _ -> Format.fprintf fmt "<code-sub>"
     | `Partial _ -> Format.fprintf fmt "<code-partial>"

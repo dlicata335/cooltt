@@ -31,7 +31,10 @@ and con_ =
   | Nat
   | Suc of con
   | Lit of int
-  | Circle
+  | Circle (* Circle -> DirCircle *)
+  | DirCircle
+  | DirLoop of con
+  | DirBase
   | Base
   | Loop of con
   | Pi of cell list * con

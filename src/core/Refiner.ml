@@ -604,6 +604,10 @@ struct
 
   let circle : T.Chk.tac =
     univ_tac "Univ.circle" @@ fun _ -> RM.ret S.CodeCircle
+    (* Circle -> DirCircle *)
+  
+  let dircircle : T.Chk.tac =
+    univ_tac "Univ.dircircle" @@ fun _ -> RM.ret S.CodeDirCircle
 
   let quantifier (tac_base : T.Chk.tac) (tac_fam : T.Chk.tac) =
     fun univ ->
@@ -1547,7 +1551,7 @@ struct
     S.NatElim (tmot, tcase_zero, tcase_suc, tscrut), fib_scrut
 end
 
-
+(* Circle -> DirCircle *)
 module Circle =
 struct
   let formation =
@@ -1605,4 +1609,63 @@ struct
     in
 
     S.CircleElim (tmot, tcase_base, tcase_loop, tscrut), fib_scrut
+end
+
+module DirCircle =
+struct
+  let formation =
+    T.Tp.rule ~name:"DirCircle.formation" @@
+    RM.ret S.DirCircle
+
+  let assert_dircircle =
+    function
+    | D.DirCircle -> RM.ret ()
+    | tp -> RM.expected_connective `DirCircle tp
+
+  let dirbase =
+    T.Chk.rule ~name:"DirCircle.dirbase" @@ fun tp ->
+    let+ () = assert_dircircle tp in
+    S.DirBase
+
+  let dirloop tac : T.Chk.tac =
+    T.Chk.rule ~name:"DirCircle.dirloop" @@ fun tp ->
+    let* () = assert_dircircle tp in
+    let+ r = T.Chk.run tac D.TpDim in
+    S.DirLoop r
+
+  let elim (tac_mot : T.Chk.tac) (tac_case_dirbase : T.Chk.tac) (tac_case_dirloop : T.Chk.tac) (tac_scrut : T.Syn.tac) : T.Syn.tac =
+    T.Syn.rule ~name:"DirCircle.elim" @@
+    let* tscrut, dircircletp = T.Syn.run tac_scrut in
+    let* () = assert_dircircle dircircletp in
+    let* tmot =
+      T.Chk.run tac_mot @<<
+      RM.lift_cmp @@ Sem.splice_tp @@ Splice.term @@
+      TB.pi TB.dircircle @@ fun _ -> TB.univ
+    in
+    let* vmot = RM.lift_ev @@ Sem.eval tmot in
+
+    let* tcase_dirbase =
+      let* code = RM.lift_cmp @@ Sem.do_ap vmot D.DirBase in
+      let* tp = RM.lift_cmp @@ Sem.do_el code in
+      T.Chk.run tac_case_dirbase tp
+    in
+
+    let* tcase_dirloop =
+      let* dirloop_tp =
+        RM.lift_cmp @@ Sem.splice_tp @@
+        Splice.con vmot @@ fun mot ->
+        Splice.term @@
+        TB.pi TB.tp_dim @@ fun x ->
+        TB.el @@ TB.ap mot [TB.dirloop x]
+      in
+      T.Chk.run tac_case_dirloop dirloop_tp
+    in
+
+    let+ fib_scrut =
+      let* vscrut = RM.lift_ev @@ Sem.eval tscrut in
+      let* code = RM.lift_cmp @@ Sem.do_ap vmot vscrut in
+      RM.lift_cmp @@ Sem.do_el code
+    in
+
+    S.DirCircleElim (tmot, tcase_dirbase, tcase_dirloop, tscrut), fib_scrut
 end

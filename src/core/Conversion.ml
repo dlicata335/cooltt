@@ -114,7 +114,8 @@ let rec equate_tp (tp0 : D.tp) (tp1 : D.tp) =
     let* () = equate_tp tp0 tp1 in
     equate_cof phi0 phi1
   | D.Nat, D.Nat
-  | D.Circle, D.Circle
+  | D.Circle, D.Circle  (* Circle -> DirCircle *)
+  | D.DirCircle, D.DirCircle  
   | D.Univ, D.Univ ->
     ret ()
   | D.ElStable code0, D.ElStable code1 ->
@@ -154,7 +155,7 @@ and equate_sign sign0 sign1 =
 
 and equate_stable_code univ code0 code1 =
   match code0, code1 with
-  | `Nat, `Nat | `Circle, `Circle | `Univ, `Univ -> ret ()
+  | `Nat, `Nat | `Circle, `Circle | `Univ, `Univ | `DirCircle, `DirCircle  -> ret ()
   | `Pi (base0, fam0), `Pi (base1, fam1)
   | `Sg (base0, fam0), `Sg (base1, fam1) ->
     let* _ = equate_con univ base0 base1 in
@@ -288,7 +289,8 @@ and equate_con tp con0 con1 =
     let* out1 = lift_cmp @@ do_el_out con1 in
     let* tp = lift_cmp @@ unfold_el code in
     equate_con tp out0 out1
-  | _, D.Zero, D.Zero ->
+    (* Circle -> DirCircle *)
+  | _, D.Zero, D.Zero -> 
     ret ()
   | _, D.Suc con0, D.Suc con1 ->
     equate_con tp con0 con1
@@ -296,6 +298,10 @@ and equate_con tp con0 con1 =
     ret ()
   | _, D.Loop r0, D.Loop r1 ->
     equate_dim r0 r1
+  | _, D.DirBase, D.DirBase ->
+    ret ()
+  | _, D.DirLoop r0, D.DirLoop r1 ->
+    equate_ddim r0 r1
   | D.TpDim, _, _ ->
     let* r0 = lift_cmp @@ con_to_dim con0 in
     let* r1 = lift_cmp @@ con_to_dim con1 in
@@ -332,6 +338,31 @@ and equate_con tp con0 con1 =
     let* bdy0' = fix_body bdy0 in
     let* bdy1' = fix_body bdy1 in
     equate_hcom (D.StableCode `Circle, r0, s0, phi0, bdy0') (D.StableCode `Circle, r1, s1, phi1, bdy1')
+  | _, D.FHCom (`DirCircle, r0, s0, phi0, bdy0), D.FHCom (`DirCircle, r1, s1, phi1, bdy1) ->
+    let fix_body bdy =
+      lift_cmp @@ splice_tm @@
+      Splice.con bdy @@ fun bdy ->
+      Splice.term @@
+      TB.lam @@ fun i -> TB.lam @@ fun prf ->
+      TB.el_in @@ TB.ap bdy [i; prf]
+    in
+    let* bdy0' = fix_body bdy0 in
+    let* bdy1' = fix_body bdy1 in
+    equate_hcom (D.StableCode `DirCircle, r0, s0, phi0, bdy0') (D.StableCode `DirCircle, r1, s1, phi1, bdy1')
+
+  (* Do I need case for nat here??? 
+  | _, D.FHDirCom (`DirCircle, r0, s0, phi0, bdy0), D.FHDirCom (`DirCircle, r1, s1, phi1, bdy1) ->
+    let fix_body bdy =
+      lift_cmp @@ splice_tm @@
+      Splice.con bdy @@ fun bdy ->
+      Splice.term @@
+      TB.lam @@ fun i -> TB.lam @@ fun prf ->
+      TB.el_in @@ TB.ap bdy [i; prf]
+    in
+    let* bdy0' = fix_body bdy0 in
+    let* bdy1' = fix_body bdy1 in
+    equate_dirhcom (D.StableCode `DirCircle, r0, s0, phi0, bdy0') (D.StableCode `DirCircle, r1, s1, phi1, bdy1')
+    *)
 
   | univ, D.StableCode code0, D.StableCode code1 ->
     equate_stable_code univ code0 code1
@@ -428,6 +459,7 @@ and equate_frm k0 k1 =
       TB.el @@ TB.ap mot [TB.suc x]
     in
     equate_con suc_tp suc_case0 suc_case1
+    (* Circle -> DirCircle *)
   | D.KCircleElim (mot0, base_case0, loop_case0), D.KCircleElim (mot1, base_case1, loop_case1) ->
     let* mot_tp =
       lift_cmp @@ Sem.splice_tp @@ Splice.term @@
@@ -447,6 +479,25 @@ and equate_frm k0 k1 =
       TB.el @@ TB.ap mot [TB.loop x]
     in
     equate_con loop_tp loop_case0 loop_case1
+  | D.KDirCircleElim (mot0, dirbase_case0, dirloop_case0), D.KDirCircleElim (mot1, dirbase_case1, dirloop_case1) ->
+    let* mot_tp =
+      lift_cmp @@ Sem.splice_tp @@ Splice.term @@
+      TB.pi TB.dircircle @@ fun _ -> TB.univ
+    in
+    let* () = equate_con mot_tp mot0 mot1 in
+    let* () =
+      let* mot_dirbase = lift_cmp @@ do_ap mot0 D.DirBase in
+      let* tp_mot_dirbase = lift_cmp @@ do_el mot_dirbase in
+      equate_con tp_mot_dirbase dirbase_case0 dirbase_case1
+    in
+    let* dirloop_tp =
+      lift_cmp @@ Sem.splice_tp @@
+      Splice.con mot0 @@ fun mot ->
+      Splice.term @@
+      TB.pi TB.tp_ddim @@ fun x ->
+      TB.el @@ TB.ap mot [TB.dirloop x]
+    in
+    equate_con dirloop_tp dirloop_case0 dirloop_case1
   | D.KElOut, D.KElOut ->
     ret ()
   | _ ->
@@ -547,7 +598,19 @@ and equate_hcom (code0, r0, s0, phi0, bdy0) (code1, r1, s1, phi1, bdy1) =
   let* con1 = lift_cmp @@ do_ap2 bdy1 i prf in
   let* tp = lift_cmp @@ do_el code0 in
   equate_con tp con0 con1
-
+(*
+and equate_dirhcom (code0, r0, s0, phi0, bdy0) (code1, r1, s1, phi1, bdy1) =
+  let* () = equate_con D.Univ code0 code1 in
+  let* () = equate_ddim r0 r1 in
+  let* () = equate_ddim s0 s1 in
+  let* () = equate_cof phi0 phi1 in
+  bind_var_ D.TpDDim @@ fun i ->
+  let* i_ddim = lift_cmp @@ con_to_dim i in
+  bind_var_ (D.TpPrf (CofBuilder.join [CofBuilder.eq i_ddim r0; phi0])) @@ fun prf ->
+  let* con0 = lift_cmp @@ do_ap2 bdy0 i prf in
+  let* con1 = lift_cmp @@ do_ap2 bdy1 i prf in
+  let* tp = lift_cmp @@ do_el code0 in
+  equate_con tp con0 con1 *)
 
 and equate_cof phi psi =
   let* () = approx_cof [phi] psi in

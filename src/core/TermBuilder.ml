@@ -193,12 +193,19 @@ let zero =
 let suc m =
   let+ x = m in
   S.Suc x
-
+  
+  (* Circle -> DirCircle *)
 let circle : _ m =
   ret S.Circle
 
+let dircircle : _ m = 
+  ret S.DirCircle
+
 let code_circle =
   ret S.CodeCircle
+
+let code_dircircle =
+  ret S.CodeDirCircle
 
 let circle_elim mmot mbase mloop mscrut =
   let+ mot = mmot
@@ -207,12 +214,26 @@ let circle_elim mmot mbase mloop mscrut =
   and+ scrut = mscrut in
   S.CircleElim (mot, base, loop, scrut)
 
+let dircircle_elim mmot mbase mloop mscrut = 
+  let+ mot = mmot
+  and+ dirbase = mbase
+  and+ dirloop = mloop
+  and+ scrut = mscrut in
+  S.DirCircleElim (mot, dirbase, dirloop, scrut)
+
 let base =
   ret S.Base
+
+let dirbase = 
+  ret S.DirBase
 
 let loop m =
   let+ x = m in
   S.Loop x
+
+let dirloop m = 
+  let+ x = m in
+  S.DirLoop x
 
 let pi ?(ident = Ident.anon) mbase mfam : _ m =
   let+ base = mbase

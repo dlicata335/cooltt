@@ -96,7 +96,11 @@ struct
     | S.NatElim (mot, zero, suc, scrut) -> labeled "nat_elim" [json_of_tm mot; json_of_tm zero; json_of_tm suc; json_of_tm scrut]
     | S.Base -> `String "base"
     | S.Loop tm -> labeled "loop" [json_of_tm tm]
+    (* Circle -> DirCircle *)
     | S.CircleElim (mot, base, loop, scrut) -> labeled  "circle_elim" [json_of_tm mot; json_of_tm base; json_of_tm loop; json_of_tm scrut]
+    | S.DirBase -> `String "dirbase"
+    | S.DirLoop tm -> labeled "dirloop" [json_of_tm tm]
+    | S.DirCircleElim (mot, dirbase, dirloop, scrut) -> labeled  "dircircle_elim" [json_of_tm mot; json_of_tm dirbase; json_of_tm dirloop; json_of_tm scrut]
     | S.Lam (nm, body) -> labeled "lam" [Ident.json_of_ident nm; json_of_tm body]
     | S.Ap (tm0, tm1) -> labeled "ap" [json_of_tm tm0; json_of_tm tm1]
     | S.Pair (tm0, tm1) -> labeled "pair" [json_of_tm tm0; json_of_tm tm1]
@@ -135,7 +139,9 @@ struct
     | S.CodeNat -> `String "code_nat"
     | S.CodeUniv -> `String "code_univ"
     | S.CodeV (r, pcode, code, pequiv) -> labeled "code_v" [json_of_tm r; json_of_tm pcode; json_of_tm code; json_of_tm pequiv]
+    (* Circle -> DirCircle *)
     | S.CodeCircle -> `String "code_circle"
+    | S.CodeDirCircle -> `String "code_dircircle"
     | S.ESub (sb, tm) -> labeled "sub" [json_of_sub sb; json_of_tm tm]
 
   and json_of_sub : S.sub -> J.value =
@@ -162,7 +168,9 @@ struct
     | S.Sg (base, nm, fib) -> labeled "sg" [json_of_tp base; Ident.json_of_ident nm; json_of_tp fib ]
     | S.Signature sign -> labeled "sign" [json_of_sign sign]
     | S.Nat -> `String "nat"
+    (* Circle -> DirCircle *)
     | S.Circle -> `String "circle"
+    | S.DirCircle -> `String "dircircle"
     | S.TpESub (sub, tp) -> labeled "subst" [json_of_sub sub; json_of_tp tp ]
     | S.DomTp -> `String "dom"
 
@@ -201,12 +209,22 @@ struct
     | `A [`String "loop"; j_tm] ->
       let tm = json_to_tm j_tm in
       S.Loop tm
-    | `A [`String "circle_elim"; j_mot; j_base; j_loop; j_scrut] ->
+    | `A [`String "circle_elim"; j_mot; j_base; j_loop; j_scrut] -> (* Circle -> DirCircle *)
       let mot = json_to_tm j_mot in
       let base = json_to_tm j_base in
       let loop = json_to_tm j_loop in
       let scrut = json_to_tm j_scrut in
-      S.CircleElim (mot, base, loop, scrut)
+      S.CircleElim (mot, base, loop, scrut) (* Circle -> DirCircle *)
+    | `String "dirbase" -> S.DirBase
+    | `A [`String "dirloop"; j_tm] ->
+      let tm = json_to_tm j_tm in
+      S.DirLoop tm
+    | `A [`String "dircircle_elim"; j_mot; j_base; j_loop; j_scrut] -> (* Circle -> DirCircle *)
+      let mot = json_to_tm j_mot in
+      let dirbase = json_to_tm j_base in
+      let dirloop = json_to_tm j_loop in
+      let scrut = json_to_tm j_scrut in
+      S.DirCircleElim (mot, dirbase, dirloop, scrut)
     | `A [`String "lam"; j_nm; j_body] ->
       let nm = Ident.json_to_ident j_nm in
       let body = json_to_tm j_body in
@@ -336,6 +354,7 @@ struct
       let pequiv = json_to_tm j_pequiv in
       S.CodeV (r, pcode, code, pequiv)
     | `String "code_circle" -> S.CodeCircle
+    | `String "code_dircircle" -> S.CodeDirCircle
     | `A [`String "sub"; j_sb; j_tm] ->
       let sub = json_to_sub j_sb in
       let tm = json_to_tm j_tm in
@@ -396,6 +415,7 @@ struct
       S.Signature sign
     | `String "nat" -> S.Nat
     | `String "circle" -> S.Nat
+    | `String "dircircle" -> S.Nat
     | `A [`String "subst"; j_sub; j_tp] ->
       let sub = json_to_sub j_sub in
       let tp = json_to_tp j_tp in
@@ -423,7 +443,9 @@ struct
     | Zero -> `String "zero"
     | Suc con -> labeled "suc" [json_of_con con]
     | Base -> `String "base"
-    | Loop dim -> labeled "loop" [json_of_dim dim]
+    | Loop dim -> labeled "loop" [json_of_dim dim] (* Circle -> DirCircle *)
+    | DirBase -> `String "dirbase"
+    | DirLoop ddim -> labeled "dirloop" [json_of_ddim ddim]
     | Pair (con0, con1) -> labeled "pair" [json_of_con con0; json_of_con con1]
     | Struct fields -> labeled "struct" [json_of_labeled json_of_con fields]
     | SubIn con -> labeled "sub_in" [json_of_con con]
@@ -436,6 +458,7 @@ struct
     | Cof cof -> labeled "cof" [Cof.json_of_cof_f json_of_con json_of_con json_of_con cof]
     | Prf -> `String "prf"
     | FHCom (tag, src, trg, cof, con) -> labeled "fhcom" [json_of_fhcom_tag tag; json_of_dim src; json_of_dim trg; json_of_cof cof; json_of_con con]
+     (*| FHDirCom (tag, src, trg, cof, con) -> labeled "fhdircom" [json_of_fhcom_tag tag; json_of_dim src; json_of_dim trg; json_of_cof cof; json_of_con con] *)
     | StableCode code -> labeled "stable_code" [json_of_stable_code code]
     | UnstableCode code -> labeled "unstable_code" [json_of_unstable_code code]
     | DomCode code -> labeled "dom_code" [json_of_dom_code code]
@@ -498,7 +521,8 @@ struct
     | Sg (tp, ident, clo) -> labeled "sg" [json_of_tp tp; Ident.json_of_ident ident; json_of_tp_clo clo]
     | Signature sign -> labeled "signature" [json_of_sign sign]
     | Nat -> `String "nat"
-    | Circle -> `String "circle"
+    | Circle -> `String "circle" (* Circle -> DirCircle *)
+    | DirCircle -> `String "dircircle" (* Circle -> DirCircle *)
 
   and json_of_sign : D.sign -> J.value =
     function
@@ -519,7 +543,9 @@ struct
     | D.KSnd -> `String "k_snd"
     | D.KProj lbl -> labeled "k_proj" [Ident.json_of_user lbl]
     | D.KNatElim (mot, z, s) -> labeled "k_nat_elim" [json_of_con mot; json_of_con z; json_of_con s]
+    (* Circle -> DirCircle *)
     | D.KCircleElim (mot, b, l) -> labeled "k_circle_elim" [json_of_con mot; json_of_con b; json_of_con l]
+    | D.KDirCircleElim (mot, b, l) -> labeled "k_dircircle_elim" [json_of_con mot; json_of_con b; json_of_con l]
     | D.KElOut -> `String "k_el_out"
 
   and json_of_unstable_frm : D.unstable_frm -> J.value =
@@ -539,7 +565,8 @@ struct
     | `Signature sign -> labeled "signature" [json_of_labeled json_of_con sign]
     | `Ext (m, n, psi, code, `Global phi, fam) -> labeled "ext" [json_of_int m; json_of_int n; json_of_con psi; json_of_con code; json_of_con phi; json_of_con fam]
     | `Nat -> `String "nat"
-    | `Circle -> `String "circle"
+    | `Circle -> `String "circle" (* Circle -> DirCircle *)
+    | `DirCircle -> `String "dircircle" (* Circle -> DirCircle *)
     | `Univ -> `String "univ"
     | `FSub (code, `Fib phi, tp) -> labeled "fsub" [json_of_con code; json_of_con phi; json_of_con tp]
     | `Partial (`Fib phi, tp) -> labeled "partial" [json_of_con phi; json_of_con tp]
@@ -555,10 +582,11 @@ struct
     | `DDim -> `String "ddim"
     | `Cof -> `String "cof"
 
-  and json_of_fhcom_tag : [`Nat | `Circle] -> J.value =
+  and json_of_fhcom_tag : [`Nat | `Circle | `DirCircle] -> J.value =
     function
     | `Nat -> `String "nat"
-    | `Circle -> `String "circle"
+    | `Circle -> `String "circle" (* Circle -> DirCircle *)
+    | `DirCircle -> `String "dircircle" (* Circle -> DirCircle *)
 
   let rec json_to_con : J.value -> D.con =
     function
@@ -570,6 +598,8 @@ struct
     | `A [`String "suc"; j_con] -> Suc (json_to_con j_con)
     | `String "base" -> Base
     | `A [`String "loop"; j_dim] -> Loop (json_to_dim j_dim)
+    | `String "dirbase" -> DirBase
+    | `A [`String "dirloop"; j_ddim] -> DirLoop (json_to_ddim j_ddim)
     | `A [`String "pair"; j_con0; j_con1] -> Pair (json_to_con j_con0, json_to_con j_con1)
     | `A [`String "struct"; j_fields] -> Struct (json_to_labeled json_to_con j_fields)
     | `A [`String "sub_in"; j_con] -> SubIn (json_to_con j_con)
@@ -653,7 +683,8 @@ struct
     | `A [`String "sg"; j_tp; j_ident; j_clo] -> Sg (json_to_tp j_tp, Ident.json_to_ident j_ident, json_to_tp_clo j_clo)
     | `A [`String "signature"; j_sign] -> Signature (json_to_sign j_sign)
     | `String "nat" -> Nat
-    | `String "circle" -> Circle
+    | `String "circle" -> Circle (* Circle -> DirCircle *)
+    | `String "dircircle" -> DirCircle
     | j -> J.parse_error j "Domain.json_to_tp"
 
   and json_to_sign : J.value -> D.sign =
@@ -677,7 +708,8 @@ struct
     | `String "k_snd" -> KSnd
     | `A [`String "k_proj"; j_lbl] -> KProj (Ident.json_to_user j_lbl)
     | `A [`String "k_nat_elim"; j_mot; j_z; j_s] -> KNatElim (json_to_con j_mot, json_to_con j_z, json_to_con j_s)
-    | `A [`String "k_circle_elim"; j_mot; j_b; j_l] -> KCircleElim (json_to_con j_mot, json_to_con j_b, json_to_con j_l)
+    | `A [`String "k_circle_elim"; j_mot; j_b; j_l] -> KCircleElim (json_to_con j_mot, json_to_con j_b, json_to_con j_l) (* Circle -> DirCircle *)
+    | `A [`String "k_dircircle_elim"; j_mot; j_b; j_l] -> KDirCircleElim (json_to_con j_mot, json_to_con j_b, json_to_con j_l)
     | `String "k-el_out" -> KElOut
     | j -> J.parse_error j "Domain.json_to_frm"
 
@@ -704,6 +736,7 @@ struct
     | `A [`String "partial"; j_phi; j_tp] -> `Partial (`Fib (json_to_con j_phi), json_to_con j_tp)
     | `String "nat" -> `Nat
     | `String "circle" -> `Circle
+    | `String "dircircle" -> `DirCircle
     | `String "univ" -> `Univ
     | j -> J.parse_error j "Domain.json_to_stable_code"
 
@@ -720,10 +753,11 @@ struct
   | `String "cof" -> `Cof
   | j -> J.parse_error j "Domain.json_to_dom_code"
 
-  and json_to_fhcom_tag : J.value -> [ `Nat | `Circle ] =
+  and json_to_fhcom_tag : J.value -> [ `Nat | `Circle | `DirCircle ] =
     function
     | `String "nat" -> `Nat
-    | `String "circle" -> `Circle
+    | `String "circle" -> `Circle (* Circle -> DirCircle *)
+    | `String "dircircle" -> `DirCircle
     | j -> J.parse_error j "Domain.json_to_fhcom_tag"
 end
 

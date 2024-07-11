@@ -39,6 +39,9 @@ val suc : t m -> t m
 val base : t m
 val loop : t m -> t m
 
+val dirbase : t m
+val dirloop : t m -> t m
+
 val prf : t m
 
 val cap : t m -> t m -> t m -> t m -> t m -> t m
@@ -58,9 +61,14 @@ val nat : tp m
 val code_nat : t m
 val nat_elim : t m -> t m -> t m -> t m -> t m
 
+(* Circle -> DirCircle *)
 val circle : tp m
 val code_circle : t m
 val circle_elim : t m -> t m -> t m -> t m -> t m
+
+val dircircle : tp m
+val code_dircircle : t m
+val dircircle_elim : t m -> t m -> t m -> t m -> t m
 
 val pi : ?ident:Ident.t -> tp m -> tp b -> tp m
 val sg : ?ident:Ident.t -> tp m -> tp b -> tp m

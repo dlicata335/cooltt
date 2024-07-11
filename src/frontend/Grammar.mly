@@ -50,7 +50,8 @@
 %token TIMES FST SND
 %token LET IN SUB FSUB
 %token SUC NAT ZERO GENERALIZE WITH
-%token CIRCLE BASE LOOP
+%token CIRCLE BASE LOOP  (* Circle -> DirCircle *)
+%token DIRCIRCLE DIRBASE DIRLOOP
 %token SIG STRUCT AS INCLUDE RENAMING OPEN
 %token EXT
 %token COE COM HCOM HFILL
@@ -299,8 +300,12 @@ plain_atomic_term_except_sq:
     { Nat }
   | BASE
     { Base }
-  | CIRCLE
+  | CIRCLE (* Circle -> DirCircle *)
     { Circle }
+  | DIRBASE
+    { DirBase }
+  | DIRCIRCLE
+    { DirCircle }
   | TYPE
     { Type }
   | hole = HOLE
@@ -383,6 +388,8 @@ plain_term_except_cof_case:
     { Suc t }
   | LOOP; t = atomic_term
     { Loop t }
+  | DIRLOOP;  t = atomic_term
+    { DirLoop t }
   | t = plain_lambda_except_cof_case
     { t }
   | ELIM; cases = cases
@@ -471,8 +478,12 @@ pat_lbl:
     { ["suc"] }
   | BASE
     { ["base"] }
+  | DIRBASE
+    { ["dirbase"] }
   | LOOP
     { ["loop"] }
+  | DIRLOOP
+    { ["dirloop"] }
   | lbl = path
     { lbl }
 

@@ -12,7 +12,8 @@ struct
     | `Sg
     | `Signature
     | `Nat
-    | `Circle
+    | `Circle (* Circle -> DirCircle *)
+    | `DirCircle
     | `Univ
     | `Dim
     | `DDim

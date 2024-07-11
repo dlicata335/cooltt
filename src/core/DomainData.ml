@@ -37,9 +37,10 @@ struct
     | `Nat
     (** Natural numbers type *)
 
-    | `Circle
+    | `Circle (* Circle -> DirCircle *)
     (** The circle [S1]. *)
-
+    | `DirCircle
+    (** The dircircle [S1]. *)
     | `Univ
       (** A code for the universe (antinomous for now). *)
 
@@ -79,6 +80,9 @@ struct
 
     | LetSym of dim * DimProbe.t * con
     (** An explicit substitution of a dimension for a symbol. *)
+(*
+    | DirLetSym of ddim * DimProbe.t * con
+    (** An explicit substitution of a dimension for a symbol. *) *)
 
     | Cut of {tp : tp; cut : cut}
     (** Our notion of {i neutral} value, a type annotated {!type:cut}. *)
@@ -87,6 +91,8 @@ struct
     | Suc of con
     | Base
     | Loop of dim
+    | DirBase
+    | DirLoop of ddim
     | Pair of con * con
     | Struct of (Ident.user * con) list
     | SubIn of con
@@ -106,7 +112,9 @@ struct
     | DDim0
     | DDim1
 
-    | FHCom of [`Nat | `Circle] * dim * dim * cof * con
+    | FHCom of [`Nat | `Circle | `DirCircle ] * dim * dim * cof * con
+    (* come back to this, may want it for something else
+    | FHDirCom of [`Nat | `DirCircle] * ddim * ddim * cof * con *)
 
     | StableCode of con stable_code
     | UnstableCode of con unstable_code
@@ -134,7 +142,8 @@ struct
     | Sg of tp * Ident.t * tp_clo
     | Signature of sign
     | Nat
-    | Circle
+    | Circle (* Circle -> DirCircle *)
+    | DirCircle
 
   and sign =
     | Field of Ident.user * tp * S.sign clo
@@ -162,7 +171,7 @@ struct
     | KProj of Ident.user
     | KNatElim of con * con * con
     | KCircleElim of con * con * con
-
+    | KDirCircleElim of con * con * con
     | KElOut
     (** The elimination form for the extension of a {i stable} type code only (see {!constructor:ElStable}). *)
 

@@ -143,7 +143,7 @@ let rec quote_con (tp : D.tp) con =
       quote_con unfolded out
     in
     S.ElIn tout
-
+(* Circle -> DirCircle *)
   | _, D.Zero ->
     ret S.Zero
 
@@ -157,6 +157,13 @@ let rec quote_con (tp : D.tp) con =
   | _, D.Loop r ->
     let+ tr = quote_dim r in
     S.Loop tr
+  
+  | _, D.DirBase ->
+    ret S.DirBase
+
+  | _, D.DirLoop r ->
+    let+ tr = quote_ddim r in
+    S.DirLoop tr
 
   | D.TpDim, D.Dim0 ->
     ret @@ S.Dim0
@@ -213,7 +220,7 @@ let rec quote_con (tp : D.tp) con =
     in
     let+ tm = quote_hcom (D.StableCode `Univ) r s phi bdy' in
     S.ElOut tm
-
+(* Circle -> DirCircle *)
   | D.Circle, D.FHCom (`Circle, r, s, phi, bdy) ->
     let* bdy' =
       lift_cmp @@ splice_tm @@
@@ -223,6 +230,16 @@ let rec quote_con (tp : D.tp) con =
       TB.el_in @@ TB.ap bdy [i; prf]
     in
     let+ tm = quote_hcom (D.StableCode `Circle) r s phi bdy' in
+    S.ElOut tm
+  | D.DirCircle, D.FHCom (`DirCircle, r, s, phi, bdy) ->
+    let* bdy' =
+      lift_cmp @@ splice_tm @@
+      Splice.con bdy @@ fun bdy ->
+      Splice.term @@
+      TB.lam @@ fun i -> TB.lam @@ fun prf ->
+      TB.el_in @@ TB.ap bdy [i; prf]
+    in
+    let+ tm = quote_hcom (D.StableCode `DirCircle) r s phi bdy' in
     S.ElOut tm
 
   | D.ElUnstable (`HCom (r,s,phi,bdy)), _ ->
@@ -339,6 +356,9 @@ and quote_stable_code univ =
 
   | `Circle ->
     ret S.CodeCircle
+    (* Circle -> DirCircle *)
+  | `DirCircle ->
+    ret S.CodeDirCircle
 
   | `Univ ->
     ret S.CodeUniv
@@ -471,6 +491,25 @@ and quote_hcom code r s phi bdy =
   in
   S.HCom (tcode, tr, ts, tphi, tbdy)
 
+(*
+and quote_ddimhcom code r s phi bdy =
+  let* tcode = quote_con D.Univ code in
+  let* tr = quote_dim r in
+  let* ts = quote_dim s in
+  let* tphi = quote_cof phi in
+  let+ tbdy =
+    let ident_i = guess_bound_name bdy in
+    quote_lam ~ident:ident_i D.TpDDim @@ fun i ->
+    let* i_ddim = lift_cmp @@ con_to_ddim i in
+    quote_lam ~ident:Ident.anon (D.TpPrf (CofBuilder.join [CofBuilder.eq r i_ddim; phi])) @@ fun prf ->
+    let* body = lift_cmp @@ do_ap2 bdy i prf in
+    let* tp = lift_cmp @@ do_el code in
+    quote_con tp body
+  in
+  S.HCom (tcode, tr, ts, tphi, tbdy)
+*)
+
+
 and quote_tp_clo base fam =
   bind_var base @@ fun var ->
   let* tp = lift_cmp @@ inst_tp_clo fam var in
@@ -491,6 +530,7 @@ and quote_tp (tp : D.tp) =
   match tp with
   | D.Nat -> ret S.Nat
   | D.Circle -> ret S.Circle
+  | D.DirCircle -> ret S.DirCircle
   | D.Pi (base, ident, fam) ->
     let* tbase = quote_tp base in
     let+ tfam = quote_tp_clo base fam in
@@ -709,7 +749,7 @@ and quote_frm tm =
     in
     let* tsuc_case = quote_con suc_tp suc_case in
     ret @@ S.NatElim (tmot, tzero_case, tsuc_case, tm)
-  | D.KCircleElim (mot, base_case, loop_case) ->
+  | D.KCircleElim (mot, base_case, loop_case) -> (* Circle -> DirCircle *)
     let* mot_tp =
       lift_cmp @@ Sem.splice_tp @@ Splice.term @@
       TB.pi TB.circle @@ fun _ -> TB.univ
@@ -729,6 +769,26 @@ and quote_frm tm =
     in
     let* tloop_case = quote_con loop_tp loop_case in
     ret @@ S.CircleElim (tmot, tbase_case, tloop_case, tm)
+  | D.KDirCircleElim (mot, dirbase_case, dirloop_case) -> (* Circle -> DirCircle *)
+    let* mot_tp =
+      lift_cmp @@ Sem.splice_tp @@ Splice.term @@
+      TB.pi TB.dircircle @@ fun _ -> TB.univ
+    in
+    let* tmot = quote_con mot_tp mot in
+    let* tdirbase_case =
+      let* mot_dirbase = lift_cmp @@ do_ap mot D.DirBase in
+      let* tp_mot_dirbase = lift_cmp @@ do_el mot_dirbase in
+      quote_con tp_mot_dirbase dirbase_case
+    in
+    let* dirloop_tp =
+      lift_cmp @@ Sem.splice_tp @@
+      Splice.con mot @@ fun mot ->
+      Splice.term @@
+      TB.pi TB.tp_ddim @@ fun x ->
+      TB.el @@ TB.ap mot [TB.dirloop x]
+    in
+    let* tdirloop_case = quote_con dirloop_tp dirloop_case in
+    ret @@ S.DirCircleElim (tmot, tdirbase_case, tdirloop_case, tm)
   | D.KFst ->
     ret @@ S.Fst tm
   | D.KSnd ->
