@@ -235,6 +235,16 @@ let dirloop m =
   let+ x = m in
   S.DirLoop x
 
+
+
+let dircirclecomp m1 m2 m3 mhom1 mhom2 = 
+  let+ x1 = m1 
+  and+ x2 = m2
+  and+ x3 = m3
+  and+ hom1 = mhom1
+  and+ hom2 = mhom2 in
+  S.DirCircleComp (x1, x2, x3, hom1, hom2)  
+
 let pi ?(ident = Ident.anon) mbase mfam : _ m =
   let+ base = mbase
   and+ fam = scope mfam in
@@ -326,6 +336,11 @@ let eq mr ms =
   let+ r = mr
   and+ s = ms in
   CB.eq r s
+
+let ddim_eq mr ms =
+  let+ r = mr
+  and+ s = ms in
+  CB.deq r s
 
 let join mphis =
   let+ phis = MU.commute_list mphis in
@@ -425,6 +440,20 @@ let code_path' mfam ml mr : _ m =
     [eq i dim0, ml;
      eq i dim1, mr]
 
+let ddim_boundary mr =
+  let+ r = mr in
+  CB.dboundary r
+
+
+
+let hom m a b = (* how do I make this take S.tp TB.m instead of S.tp TB.m TB.m ??? *)
+  pi (ret S.TpDDim) (fun i -> (sub m (ddim_boundary i) 
+  (fun _ -> cof_split
+  [ddim_eq i ddim0, a;
+   ddim_eq i ddim1, b])) )
+(*
+let triangle a b c f g = 
+  pi (ret S.TpDDim) (fun i -> (pi (ret S.TpDDim) (fun j -> ()))) *)
 
 module Equiv : sig
   val code_is_contr : S.t m -> S.t m

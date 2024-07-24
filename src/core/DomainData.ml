@@ -93,6 +93,7 @@ struct
     | Loop of dim
     | DirBase
     | DirLoop of ddim
+    | DirCircleComp of con * con * con * con * con
     | Pair of con * con
     | Struct of (Ident.user * con) list
     | SubIn of con
@@ -159,6 +160,8 @@ struct
 
     | Coe of con * dim * dim * con
     | UnstableCut of cut * unstable_frm
+    (*
+    | DirCircleComp *)
 
   (** A {!type:cut} is a value that is blocked on the computation of a {!type:hd} ("head"); when the head is computed, the list of stack frames ({!type:frm}) carried by the cut will be enacted. *)
   and cut = hd * frm list

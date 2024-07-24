@@ -177,6 +177,8 @@ struct
       Format.fprintf fmt "dirbase"
     | DirLoop r ->
       Format.fprintf fmt "dirloop[%a]" pp_ddim r
+    | DirCircleComp (r1, r2, r3, hom1, hom2) ->
+      Format.fprintf fmt "dircirclecomp[%a, %a, %a, %a, %a]" pp_con r1 pp_con r2 pp_con r3 pp_con hom1 pp_con hom2
     | Pair (con0, con1) ->
       Format.fprintf fmt "pair[%a,%a]" pp_con con0 pp_con con1
     | Struct fields ->

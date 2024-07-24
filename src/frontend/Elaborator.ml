@@ -30,6 +30,7 @@ sig
   val partial : T.Chk.tac -> T.Chk.tac -> tac
   val nat : tac
   val circle : tac
+  val dircircle : tac
   val univ : tac
   val dim : tac
   val ddim : tac
@@ -123,6 +124,7 @@ struct
 
   let nat = Code R.Univ.nat
   let circle = Code R.Univ.circle
+  let dircircle = Code R.Univ.dircircle
   let univ = Code R.Univ.univ
   let dim = Tp R.Dim.formation
   let ddim = Tp R.DDim.formation
@@ -276,6 +278,14 @@ and chk_tm : CS.con -> T.Chk.tac =
 
     | CS.Loop c ->
       R.Circle.loop (chk_tm c)
+    
+    | CS.DirBase ->
+      R.DirCircle.dirbase
+
+    | CS.DirLoop c ->
+      R.DirCircle.dirloop (chk_tm c)
+    
+      
 
     | CS.Let (c, ident, body) ->
       R.Structural.let_ ~ident (syn_tm c) @@ fun _ -> chk_tm body
@@ -288,6 +298,9 @@ and chk_tm : CS.con -> T.Chk.tac =
 
     | CS.Circle ->
       R.Univ.circle
+    
+    | CS.DirCircle ->
+      R.Univ.dircircle
 
     | CS.Type ->
       R.Univ.univ
@@ -482,9 +495,13 @@ and syn_tm : ?elim_total:bool -> CS.con -> T.Syn.tac =
     in
     let (tac, _, _ ) = mk_steps eqns in
     tac
+  
+  | CS.DirCircleComp (c1, c2, c3, h1, h2) ->
+      R.DirCircle.dircirclecomp (chk_tm c1) (chk_tm c2) (chk_tm c3) (chk_tm h1) (chk_tm h2)
   | _ ->
     T.Syn.rule @@
     RM.throw @@ ElabError.ElabError (ElabError.ExpectedSynthesizableTerm con.node, con.info)
+  
 
 and chk_cases cases =
   List.map chk_case cases

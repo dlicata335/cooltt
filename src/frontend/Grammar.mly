@@ -51,7 +51,7 @@
 %token LET IN SUB FSUB
 %token SUC NAT ZERO GENERALIZE WITH
 %token CIRCLE BASE LOOP  (* Circle -> DirCircle *)
-%token DIRCIRCLE DIRBASE DIRLOOP
+%token DIRCIRCLE DIRBASE DIRLOOP DIRCIRCLECOMP 
 %token SIG STRUCT AS INCLUDE RENAMING OPEN
 %token EXT
 %token COE COM HCOM HFILL
@@ -390,6 +390,8 @@ plain_term_except_cof_case:
     { Loop t }
   | DIRLOOP;  t = atomic_term
     { DirLoop t }
+  | DIRCIRCLECOMP;  t1 = atomic_term ; t2 = atomic_term ; t3 = atomic_term ; h1 = atomic_term ; h2 = atomic_term
+    { DirCircleComp (t1, t2, t3, h1, h2) }
   | t = plain_lambda_except_cof_case
     { t }
   | ELIM; cases = cases
@@ -484,6 +486,8 @@ pat_lbl:
     { ["loop"] }
   | DIRLOOP
     { ["dirloop"] }
+  | DIRCIRCLECOMP
+    { ["dircirclecomp"] }
   | lbl = path
     { lbl }
 

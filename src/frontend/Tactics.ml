@@ -250,6 +250,21 @@ struct
         | None -> RM.ret @@ R.Hole.unleash_hole @@ Some "loop"
       in
       T.Syn.run @@ R.Circle.elim mot tac_base tac_loop scrut
+    | D.DirCircle, mot ->
+      let* tac_dirbase : T.Chk.tac =
+        match find_case ["dirbase"] cases with
+        | Some ([], tac) -> RM.ret tac
+        | Some _ -> elab_err ElabError.MalformedCase
+        | None -> RM.ret @@ R.Hole.unleash_hole @@ Some "dirbase"
+      in
+      let* tac_dirloop =
+        match find_case ["dirloop"] cases with
+        | Some ([`Simple nm_x], tac) ->
+          RM.ret @@ R.Pi.intro ~ident:nm_x @@ fun _ -> tac
+        | Some _ -> elab_err ElabError.MalformedCase
+        | None -> RM.ret @@ R.Hole.unleash_hole @@ Some "dirloop"
+      in
+      T.Syn.run @@ R.DirCircle.elim mot tac_dirbase tac_dirloop scrut
     | _ ->
       RM.with_pp @@ fun ppenv ->
       let* tp = RM.quote_tp ind_tp in
@@ -260,6 +275,8 @@ struct
     | D.Nat ->
       RM.ret ()
     | D.Circle ->
+      RM.ret ()
+    | D.DirCircle ->
       RM.ret ()
     | tp ->
       RM.with_pp @@ fun ppenv ->

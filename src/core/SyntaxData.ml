@@ -23,6 +23,8 @@ struct
     | DirLoop of t
     | DirCircleElim of t * t * t * t
 
+    | DirCircleComp of t * t * t * t * t
+
     | Lam of Ident.t * t
     | Ap of t * t
 

@@ -72,6 +72,7 @@ module Univ : sig
   val univ : Chk.tac
   val nat : Chk.tac
   val circle : Chk.tac
+  val dircircle : Chk.tac
   val pi : Chk.tac -> Chk.tac -> Chk.tac
   val sg : Chk.tac -> Chk.tac -> Chk.tac
   val signature : [`Field of (Ident.user * Chk.tac) | `Include of Chk.tac * (Ident.user -> Ident.user option)] list -> Chk.tac
@@ -147,6 +148,19 @@ module Circle : sig
   val formation : Tp.tac
   val base : Chk.tac
   val loop : Chk.tac -> Chk.tac
+  val elim
+    : Chk.tac
+    -> Chk.tac
+    -> Chk.tac
+    -> Syn.tac
+    -> Syn.tac
+end
+
+module DirCircle : sig
+  val formation : Tp.tac
+  val dirbase : Chk.tac
+  val dirloop : Chk.tac -> Chk.tac
+  val dircirclecomp : Chk.tac -> Chk.tac -> Chk.tac -> Chk.tac -> Chk.tac -> Syn.tac
   val elim
     : Chk.tac
     -> Chk.tac

@@ -100,6 +100,7 @@ struct
     | S.CircleElim (mot, base, loop, scrut) -> labeled  "circle_elim" [json_of_tm mot; json_of_tm base; json_of_tm loop; json_of_tm scrut]
     | S.DirBase -> `String "dirbase"
     | S.DirLoop tm -> labeled "dirloop" [json_of_tm tm]
+    | S.DirCircleComp (tm1, tm2, tm3, hm1, hm2) -> labeled "dircirclecomp" [json_of_tm tm1; json_of_tm tm2; json_of_tm tm3; json_of_tm hm1; json_of_tm hm2]
     | S.DirCircleElim (mot, dirbase, dirloop, scrut) -> labeled  "dircircle_elim" [json_of_tm mot; json_of_tm dirbase; json_of_tm dirloop; json_of_tm scrut]
     | S.Lam (nm, body) -> labeled "lam" [Ident.json_of_ident nm; json_of_tm body]
     | S.Ap (tm0, tm1) -> labeled "ap" [json_of_tm tm0; json_of_tm tm1]
@@ -219,6 +220,13 @@ struct
     | `A [`String "dirloop"; j_tm] ->
       let tm = json_to_tm j_tm in
       S.DirLoop tm
+    | `A [`String "dircirclecomp"; j_tm1; j_tm2; j_tm3; j_hm1; j_hm2] ->
+      let tm1 = json_to_tm j_tm1 in
+      let tm2 = json_to_tm j_tm2 in
+      let tm3 = json_to_tm j_tm3 in
+      let hm1 = json_to_tm j_hm1 in
+      let hm2 = json_to_tm j_hm2 in
+      S.DirCircleComp (tm1, tm2, tm3, hm1, hm2) 
     | `A [`String "dircircle_elim"; j_mot; j_base; j_loop; j_scrut] -> (* Circle -> DirCircle *)
       let mot = json_to_tm j_mot in
       let dirbase = json_to_tm j_base in
@@ -446,6 +454,7 @@ struct
     | Loop dim -> labeled "loop" [json_of_dim dim] (* Circle -> DirCircle *)
     | DirBase -> `String "dirbase"
     | DirLoop ddim -> labeled "dirloop" [json_of_ddim ddim]
+    | DirCircleComp (s1, s2, s3, hom1, hom2) -> labeled "dircirclecomp" [json_of_con s1; json_of_con s2; json_of_con s3; json_of_con hom1; json_of_con hom2]
     | Pair (con0, con1) -> labeled "pair" [json_of_con con0; json_of_con con1]
     | Struct fields -> labeled "struct" [json_of_labeled json_of_con fields]
     | SubIn con -> labeled "sub_in" [json_of_con con]
@@ -600,6 +609,7 @@ struct
     | `A [`String "loop"; j_dim] -> Loop (json_to_dim j_dim)
     | `String "dirbase" -> DirBase
     | `A [`String "dirloop"; j_ddim] -> DirLoop (json_to_ddim j_ddim)
+    | `A [`String "dircirclecomp"; j_s1; j_s2; j_s3; j_hom1; j_hom2] -> DirCircleComp (json_to_con j_s1, json_to_con j_s2, json_to_con j_s3, json_to_con j_hom1, json_to_con j_hom2)
     | `A [`String "pair"; j_con0; j_con1] -> Pair (json_to_con j_con0, json_to_con j_con1)
     | `A [`String "struct"; j_fields] -> Struct (json_to_labeled json_to_con j_fields)
     | `A [`String "sub_in"; j_con] -> SubIn (json_to_con j_con)

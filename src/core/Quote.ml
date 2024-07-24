@@ -164,6 +164,43 @@ let rec quote_con (tp : D.tp) con =
   | _, D.DirLoop r ->
     let+ tr = quote_ddim r in
     S.DirLoop tr
+  
+  | _, D.DirCircleComp (r1, r2, r3, hom1, hom2) ->
+    let* tr1 = quote_con D.DirCircle r1
+    and* tr2 = quote_con D.DirCircle r2
+    and* tr3 = quote_con D.DirCircle r3 in
+    (* let* homtype = lift_cmp @@ inst_tp_clo    Do I need to define homtype like this in order to use quote con?? *)
+    let* h1 = lift_cmp @@ Sem.splice_tp @@ Splice.term @@
+      TB.hom TB.dircircle (TB.ret tr1) (TB.ret tr2) in
+    let* h2 = lift_cmp @@ Sem.splice_tp @@ Splice.term @@
+    TB.hom TB.dircircle (TB.ret tr2) (TB.ret tr3) in
+    let* h1real = quote_con h1 hom1 in
+    let* h2real = quote_con h2 hom2
+     in
+     ret (S.DirCircleComp (tr1, tr2, tr3, h1real, h2real))
+
+    (*
+      let dircirclecomp (dirc1 : T.Chk.tac) (dirc2 : T.Chk.tac) (dirc3 : T.Chk.tac) (hom1 : T.Chk.tac) (hom2 : T.Chk.tac) : T.Syn.tac =
+        T.Syn.rule ~name:"DirCircle.dircirclecomp" @@ 
+        let* d1 = T.Chk.run dirc1 D.DirCircle in
+        let* d2 = T.Chk.run dirc2 D.DirCircle in
+        let* d3 = T.Chk.run dirc3 D.DirCircle in
+        let* h1 =
+          T.Chk.run hom1 @<<
+          RM.lift_cmp @@ Sem.splice_tp @@ Splice.term @@
+          TB.hom TB.dircircle (TB.ret d1) (TB.ret d2)
+        in
+        let* h2 =
+          T.Chk.run hom2 @<<
+          RM.lift_cmp @@ Sem.splice_tp @@ Splice.term @@
+          TB.hom TB.dircircle (TB.ret d2) (TB.ret d3)
+        in
+          let* htotal = 
+          RM.lift_cmp @@ Sem.splice_tp @@ Splice.term @@
+          TB.hom TB.dircircle (TB.ret d1) (TB.ret d3)
+          in
+          RM.ret (S.DirCircleComp(d1, d2, d3, h1, h2), htotal)  *)
+
 
   | D.TpDim, D.Dim0 ->
     ret @@ S.Dim0

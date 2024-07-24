@@ -1630,8 +1630,35 @@ struct
   let dirloop tac : T.Chk.tac =
     T.Chk.rule ~name:"DirCircle.dirloop" @@ fun tp ->
     let* () = assert_dircircle tp in
-    let+ r = T.Chk.run tac D.TpDim in
+    let+ r = T.Chk.run tac D.TpDDim in
     S.DirLoop r
+
+  (* let hom : T.Chk.tac
+     
+  *)
+
+  
+  let dircirclecomp (dirc1 : T.Chk.tac) (dirc2 : T.Chk.tac) (dirc3 : T.Chk.tac) (hom1 : T.Chk.tac) (hom2 : T.Chk.tac) : T.Syn.tac =
+    T.Syn.rule ~name:"DirCircle.dircirclecomp" @@ 
+    let* d1 = T.Chk.run dirc1 D.DirCircle in
+    let* d2 = T.Chk.run dirc2 D.DirCircle in
+    let* d3 = T.Chk.run dirc3 D.DirCircle in
+    let* h1 =
+      T.Chk.run hom1 @<<
+      RM.lift_cmp @@ Sem.splice_tp @@ Splice.term @@
+      TB.hom TB.dircircle (TB.ret d1) (TB.ret d2)
+    in
+    let* h2 =
+      T.Chk.run hom2 @<<
+      RM.lift_cmp @@ Sem.splice_tp @@ Splice.term @@
+      TB.hom TB.dircircle (TB.ret d2) (TB.ret d3)
+    in
+      let* htotal = 
+      RM.lift_cmp @@ Sem.splice_tp @@ Splice.term @@
+      TB.hom TB.dircircle (TB.ret d1) (TB.ret d3)
+      in
+      RM.ret (S.DirCircleComp(d1, d2, d3, h1, h2), htotal)
+  
 
   let elim (tac_mot : T.Chk.tac) (tac_case_dirbase : T.Chk.tac) (tac_case_dirloop : T.Chk.tac) (tac_scrut : T.Syn.tac) : T.Syn.tac =
     T.Syn.rule ~name:"DirCircle.elim" @@
@@ -1655,7 +1682,7 @@ struct
         RM.lift_cmp @@ Sem.splice_tp @@
         Splice.con vmot @@ fun mot ->
         Splice.term @@
-        TB.pi TB.tp_dim @@ fun x ->
+        TB.pi TB.tp_ddim @@ fun x ->
         TB.el @@ TB.ap mot [TB.dirloop x]
       in
       T.Chk.run tac_case_dirloop dirloop_tp

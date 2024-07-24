@@ -302,6 +302,8 @@ and equate_con tp con0 con1 =
     ret ()
   | _, D.DirLoop r0, D.DirLoop r1 ->
     equate_ddim r0 r1
+  (* We don't need DirCircleComp bc this is about equality... right?
+    *)
   | D.TpDim, _, _ ->
     let* r0 = lift_cmp @@ con_to_dim con0 in
     let* r1 = lift_cmp @@ con_to_dim con1 in
@@ -498,6 +500,7 @@ and equate_frm k0 k1 =
       TB.el @@ TB.ap mot [TB.dirloop x]
     in
     equate_con dirloop_tp dirloop_case0 dirloop_case1
+    (* Add case here for dircirclecomp?? *)
   | D.KElOut, D.KElOut ->
     ret ()
   | _ ->

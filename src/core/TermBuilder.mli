@@ -41,6 +41,8 @@ val loop : t m -> t m
 
 val dirbase : t m
 val dirloop : t m -> t m
+val dircirclecomp : t m -> t m -> t m -> t m -> t m -> t m
+
 
 val prf : t m
 
@@ -89,6 +91,10 @@ val code_sg : t m -> t m -> t m
 val code_path : t m -> t m -> t m
 (** A specialization of {!val:code_path} that performs a {!val:cof_split}. *)
 val code_path' : t m -> t m -> t m -> t m
+val ddim_boundary : t m -> t m
+val hom : tp m -> t m -> t m -> tp m
+(*
+val triangle : t m -> t m -> t m -> t m -> t m -> t m  *)
 val code_v : t m -> t m -> t m -> t m -> t m
 val code_ext : int -> int -> t m -> t m -> t m -> t m -> t m
 val vproj : t m -> t m -> t m -> t m -> t m -> t m
@@ -98,6 +104,7 @@ val code_pis : t m list -> (t m list -> t m) -> t m
 val dim0 : t m
 val dim1 : t m
 val eq : t m -> t m -> t m
+val ddim_eq : t m -> t m -> t m
 val join : t m list -> t m
 val meet : t m list -> t m
 val top : t m

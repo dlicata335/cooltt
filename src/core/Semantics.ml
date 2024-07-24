@@ -130,6 +130,13 @@ and push_subst_con : D.dim -> DimProbe.t -> D.con -> D.con CM.m =
   | D.DirLoop s -> (* Circle -> DirCircle ? should I change this to subst?? *)
     let+ s = ret s in
     D.DirLoop s
+  | D.DirCircleComp (s1, s2, s3, hom1, hom2) ->
+    let+ s1 = ret s1 
+    and+ s2 = ret s2
+    and+ s3 = ret s3
+    and+ hom1 = ret hom1
+    and+ hom2 = ret hom2 in
+    D.DirCircleComp (s1, s2, s3, hom1, hom2)
   | D.Lam (ident, clo) ->
     let+ clo = subst_clo r x clo in
     D.Lam (ident, clo)
@@ -766,6 +773,14 @@ and eval : S.t -> D.con EvM.m =
         | false ->
           ret (D.DirLoop r) (* How do I make this a ddim? *)
       end
+    | S.DirCircleComp (tr1, tr2, tr3, hom1, hom2) ->
+      let* r1 = eval tr1 in
+      let* r2 = eval tr2 in
+      let* r3 = eval tr3 in
+      let* h1 = eval hom1 in
+      let* h2 = eval hom2 in
+        ret (D.DirCircleComp (r1, r2, r3, h1, h2) )
+      
     | S.DirCircleElim (mot, dirbase, dirloop, c) -> (* Circle -> DirCircle *)
       let* vmot = eval mot in
       let* vdirbase = eval dirbase in
@@ -1026,7 +1041,7 @@ and whnf_con : D.con -> D.con whnf CM.m =
   let open CM in
   function
   | D.Lam _ | D.BindSym _ | D.Zero | D.Suc _ | D.Base | D.DirBase | D.Pair _ | D.Struct _ | D.SubIn _ | D.ElIn _
-  | D.Cof _ | D.Dim0 | D.Dim1 |  D.DDim0 | D.DDim1 | D.Prf | D.StableCode _ | D.DomCode _ | D.DimProbe _ ->
+  | D.Cof _ | D.Dim0 | D.Dim1 |  D.DDim0 | D.DDim1 | D.Prf | D.StableCode _ | D.DomCode _ | D.DirCircleComp _ | D.DimProbe _ ->
     ret `Done
   | D.LetSym (r, x, con) ->
     reduce_to @<< push_subst_con r x con
@@ -1050,13 +1065,20 @@ and whnf_con : D.con -> D.con whnf CM.m =
       | true -> ret (`Reduce D.Base)
       | false -> ret `Done
     end
-    | D.DirLoop r ->
+  | D.DirLoop r ->
       begin
         test_sequent [] (CofBuilder.dboundary r) |>>
         function
         | true -> ret (`Reduce D.DirBase)
         | false -> ret `Done
       end
+  (* | D.DirCircleComp r1 r2 r3 hom1 hom2  ->
+      begin
+        test_sequent [] (CofBuilder.dboundary r) |>>
+        function
+        | true -> ret (`Reduce D.DirBase)
+        | false -> ret `Done
+      end -- need to fix this function *)    
   | D.Split branches -> whnf_con_branches branches
 
 and whnf_con_branches =
@@ -1318,6 +1340,8 @@ and do_dircircle_elim (mot : D.con) dirbase (dirloop : D.con) c : D.con CM.m =
     ret dirbase
   | D.DirLoop r ->
     do_ap dirloop (D.ddim_to_con r)
+  (* | D.DirCirclecomp r1 r2 r3 hom1 hom2 ->
+    do_ap dircirclecomp (D.ddim_to_con r) -- this is going to be more complicated *)
   | D.Cut {cut; _} as c ->
     let* fib = do_ap mot c in
     let+ elfib = do_el fib in

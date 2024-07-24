@@ -34,6 +34,7 @@ and con_ =
   | Circle (* Circle -> DirCircle *)
   | DirCircle
   | DirLoop of con
+  | DirCircleComp of con * con * con * con * con 
   | DirBase
   | Base
   | Loop of con

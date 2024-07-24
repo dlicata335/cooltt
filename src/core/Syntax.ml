@@ -39,6 +39,7 @@ struct
 
     | DirBase -> Format.fprintf fmt "dirbase"
     | DirLoop _ -> Format.fprintf fmt "<dirloop>"
+    | DirCircleComp _ -> Format.fprintf fmt "<dircirclecomp>"
     | DirCircleElim _ -> Format.fprintf fmt "<dircircle/elim>"
 
     | Lam (ident, tm) -> Format.fprintf fmt "lam[%a, %a]" Ident.pp ident dump tm
@@ -176,7 +177,7 @@ struct
       | Suc _ as tm -> if Option.is_some (to_numeral tm) then atom else juxtaposition
       | HCom _ | Com _ | Coe _
       | Fst _ | Snd _
-      | NatElim _ | Loop _ | DirLoop _
+      | NatElim _ | Loop _ | DirLoop _ | DirCircleComp _
       | CircleElim _ -> juxtaposition (* Circle -> DirCircle *)
       | DirCircleElim _ -> juxtaposition
 
@@ -362,6 +363,13 @@ struct
       Format.fprintf fmt "dirbase"
     | DirLoop tm ->
       Format.fprintf fmt "dirloop %a" (pp_atomic env) tm
+    | DirCircleComp (t1, t2, t3, h1, h2) ->
+      Format.fprintf fmt "dircirclecomp %a %a %a %a %a" 
+        (pp_atomic env) t1 
+        (pp_atomic env) t2 
+        (pp_atomic env) t3 
+        (pp_atomic env) h1
+        (pp_atomic env) h2
     | DirCircleElim (mot, dirbase, dirloop, tm) -> (* Circle -> DirCircle *)
       Format.fprintf fmt "@[<hv2>elim %a %@ %a@;@[<hv2>[ dirbase =>@;%a@ | dirloop =>@;%a@ ]@]@]"
         (pp_atomic env) tm
